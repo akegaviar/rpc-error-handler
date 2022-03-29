@@ -8,57 +8,48 @@ In Chainstack, we offer tailored load balancing in the enterprise plan but not a
 
 When using a dedicated or shared nodes, it's possible that some requests might fail or timeout. Although this is a rare scenario, this can have a big impact in some applications like artitrage bots. In our enterprise plan, all requests go through a load balancer and are sent to to a live node. However, other plans do not have load balancing enabled so handling this scenarios must be done at application level.
 
-## Using Promises
+Note: to test this, I've created a code snippet that runs sequential RPC requests like getBlockNumber, getNetwork, getFeeData and getGasPrice.
 
-One of the ways to handle this is to send the same RPC request multiple times to different endpoints and handle the response. There are three different Javascript Promise methods we can use for this.
+## Duplicate requests and use promises
 
-### Promise.race
-
-One of the solutions we've seen some of our clients use (shoutout to Novel team), is via Promise.race().
-By initialising two different ethers providers, one with their own dedicated node RPC endpoint and another one (the backup) with one of our shared nodes endpoints (which are free up until 3 million request).
-Then when sending any RPC requests they use `Promise.race()` to catch the one that finish first.
-
-Here is an example:
-
-```js
-
-```
-
-The problem with this approach is that `Promise.race()` fulfills as soon as one of the promises fulfills or rejects. That means that if one requests fails before the other one succeeds, the result we'll get will be the error returned.
+One of the ways to handle this is to send the same request multiple times to different endpoints
+by using two ethers providers, each one with a different RPC endpoint. Then we can use multiple Javascript Promise methods to handle the promises.
 
 ### Promise.all
 
-This approach is very similar although `Promise.all()` will wait until all requests have completed and their correspondent promises fullfilled or rejected.
+We can use `Promise.all()` to wait until all requests have completed and their correspondent promises fullfilled or rejected. The problem with this approach is that we'd have to manually check which one of the promises returned a valid response. In the example snippet, we're forcing an error in after the first two RPC requests. **By catching the error in the `wrapRPCPromise` method, `Promise.all` does not fail and we can get a valid response from one of the providers.**
 
-The problem with this approach is that we'd have to manually check which one of the promises returned a valid response. In addition
+This is a good first approach but it has its drawbacks: we're duplicating requests and we have to manually check which of the providers (or which of the promises) returned a valid reponse. `Promise.all` will wait until all promises are fulfilled/rejected so we'll not get the benefits of a faster reponse from one of the nodes.
+
+[Download code snippet here](https://github.com/uF4No/rpc-error-handler/blob/main/ethers-examples/promiseAll.js)
+
+### Promise.race
+
+One of the solutions we've seen some of our clients use (shoutout to Novel team), is with `Promise.race`, which will continue as soon as one of the promises fulfills or gets rejected. This makes this solution faster but at the same time, that's its drawback. If one requests fails before the other one succeeds, the result we'll get will be the error returned 😕
+
+[Download code snippet here](https://github.com/uF4No/rpc-error-handler/blob/main/ethers-examples/promiseRace.js)
 
 ### Promise.any
 
-Finally,with `Promise.any()` we get the best solution. It'll return a single promise that resolves as soon as any of the promises fulfills, ignoring the errors. This means that we can
+Finally, with `Promise.any` we get the best of both. It'll return a single promise that resolves as soon as any of the promises fulfills, ignoring the errors. The only thing we have to change is the `wrapRPCPromise` method to actually reject when there is an issue.
 
-The catch? Promise.any was added in Node v15 so you have to make sure you're running one of the latest versions.
+The catch? `Promise.any` **was added in Node v15** so you have to make sure you're running one of the latest versions.
+
+[Download code snippet here](https://github.com/uF4No/rpc-error-handler/blob/main/ethers-examples/promiseRace.js)
 
 ## Retrying with a function wrapper
 
-Another option is to simply retry the same RPC request whenever it fails, using the same endpoint and provider. To do this, we need to create a wrapper function that receives the RPC request promise and a number of retries. If the promise is fulfilled, it'll simply return the response but if it fails, it'll reduce the counter of retries left and call the same method recursively.
+Another option is to simply retry the same RPC request whenever it fails, using the same endpoint and provider. To do this, we need to create a different wrapper function that receives the RPC request promise and a number of retries. If the promise is fulfilled, it'll simply return the response but if it fails, it'll reduce the counter of retries left and call the same method recursively.
 
-Here is an example:
+Find below the retryPromise method:
 
 ```js
-const { ethers } = require('ethers')
-
-const DEDICATED_NODE_RPC =
-  'https://nd-281-758-737.int.chainstack.com/d9bbf196e5f842b185b3eedba4d7cc53'
-
-const mainProvider = new ethers.providers.JsonRpcProvider(DEDICATED_NODE_RPC)
-
 /**
- * @param promise An RPC method promise to be resolved
+ * @param promise An RPC request promise to be resolved
  * @retriesLeft Number of tries before rejecting
- * @desc Retries a promise n no. of times before rejecting.
  * @returns resolved promise
  */
-async function retryPromise(promise, retriesLeft) {
+async function retryRPCPromise(promise, retriesLeft) {
   try {
     // try to resolve the promise
     const data = await promise
@@ -76,35 +67,17 @@ async function retryPromise(promise, retriesLeft) {
     return retryPromise(promise, retriesLeft - 1)
   }
 }
-
-const main = async () => {
-  try {
-    // simple RPC request to test
-    const res = await retryPromise(mainProvider.getBlockNumber(), 3)
-
-    console.log('res', res)
-  } catch (err) {
-    console.error(err)
-  }
-}
-
-main()
 ```
+
+[You can check the code snippet that uses this wrapper function here](https://github.com/uF4No/rpc-error-handler/blob/main/ethers-examples/retryRequest.js)
 
 Inspired [in this article](https://tusharsharma.dev/posts/retry-design-pattern-with-js-promises)
 
 ## Retry wrapper with delay
 
-A variation of the previous solution is to add a delay between each retry. We can do this by adding a `wait()` method that leverages the `setTimeout()` function and call it before each retry. Here is an example:
+A variation of the previous solution is to add a delay between each retry. We can do this by adding a `wait()` method that leverages the `setTimeout()` function and call it before each retry. Here is the wait and wrapper method:
 
 ```js
-const { ethers } = require('ethers')
-
-const DEDICATED_NODE_RPC =
-  'https://nd-281-758-737.int.chainstack.com/d9bbf196e5f842b185b3eedba4d7cc53'
-
-const mainProvider = new ethers.providers.JsonRpcProvider(BAD_NODE_RPC)
-
 /**
  * @param ms miliseconds to wait
  * @returns empty promise after delay
@@ -122,7 +95,7 @@ function wait(ms) {
  * @retriesLeft Number of tries before rejecting
  * @returns resolved promise
  */
-async function retryPromiseWithDelay(promise, retriesLeft, delay) {
+async function retryRPCPromiseWithDelay(promise, retriesLeft, delay) {
   try {
     // try to resolve the promise
     const data = await promise
@@ -140,31 +113,14 @@ async function retryPromiseWithDelay(promise, retriesLeft, delay) {
     // wait for delay
     await wait(delay)
     // following retries after 1000ms
-    return retryPromiseWithDelay(promise, retriesLeft - 1, 1000)
+    return retryRPCPromiseWithDelay(promise, retriesLeft - 1, 1000)
   }
 }
-
-const main = async () => {
-  try {
-    // first retry after 500ms
-    const res = await retryPromiseWithDelay(
-      mainProvider.getBlockNumber(),
-      3,
-      500
-    )
-
-    console.log('res', res)
-  } catch (err) {
-    console.error(err)
-  }
-}
-
-main()
 ```
 
 ## Retrying with a fallback provider
 
-Although the solutions detailed above are a good way to handle this, they have their drawbacks: the Promise methods target multiple endpoints to make increase the chances of one of them being up, but they send the same request multiple times, which is not ideal. With retries, we're sending single requests but we're tageting the same endpoint so, if the node is down, all retries will fail.
+Although the solutions detailed above are a good way to handle this, they all have their drawbacks: the Promise methods target multiple endpoints to increase the chances of one of them being up, but they send the same request multiple times, which is not ideal. With retries, we're sending single requests but we're targeting the same endpoint so, if the node is down, all retries will fail.
 
 The ideal solution will be a to send single requests and, if it fails, send the retries to a different endpoint.
 

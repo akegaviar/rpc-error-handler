@@ -15,6 +15,22 @@ const wrapRPCPromise = async (promise, origin) => {
 }
 
 /**
+ * @param {*} promise An RPC request promise to be resolved
+ * @param {*} origin URL of the node
+ * @returns resolved promise
+ */
+const wrapRPCPromiseWithReject = async (promise, origin) => {
+  try {
+    const data = await promise
+    return { result: data, origin }
+  } catch (error) {
+    console.error('Error running method')
+
+    return Promise.reject(error)
+  }
+}
+
+/**
  * @param promise An RPC request promise to be resolved
  * @retriesLeft Number of tries before rejecting
  * @returns resolved promise
@@ -34,7 +50,7 @@ async function retryRPCPromise(promise, retriesLeft) {
     console.log(`${retriesLeft} retries left`)
     // if there are retries left, reduce counter and
     // call same function recursively
-    return retryPromise(promise, retriesLeft - 1)
+    return retryRPCPromise(promise, retriesLeft - 1)
   }
 }
 
@@ -55,7 +71,7 @@ function wait(ms) {
  * @retriesLeft Number of tries before rejecting
  * @returns resolved promise
  */
-async function retryPromiseWithDelay(promise, retriesLeft, delay) {
+async function retryRPCPromiseWithDelay(promise, retriesLeft, delay) {
   try {
     // try to resolve the promise
     const data = await promise
@@ -73,8 +89,13 @@ async function retryPromiseWithDelay(promise, retriesLeft, delay) {
     // wait for delay
     await wait(delay)
     // following retries after 1000ms
-    return retryPromiseWithDelay(promise, retriesLeft - 1, 1000)
+    return retryRPCPromiseWithDelay(promise, retriesLeft - 1, 1000)
   }
 }
 
-module.exports = { retryPromiseWithDelay, retryRPCPromise, wrapRPCPromise }
+module.exports = {
+  wrapRPCPromise,
+  wrapRPCPromiseWithReject,
+  retryRPCPromise,
+  retryRPCPromiseWithDelay,
+}
