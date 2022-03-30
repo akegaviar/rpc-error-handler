@@ -71,7 +71,7 @@ async function retryRPCPromise(promise, retriesLeft) {
 
 [You can check the code snippet that uses this wrapper function here](https://github.com/uF4No/rpc-error-handler/blob/main/ethers-examples/retryRequest.js)
 
-Inspired [in this article](https://tusharsharma.dev/posts/retry-design-pattern-with-js-promises)
+Credit to [tusharsharma.dev for this article](https://tusharsharma.dev/posts/retry-design-pattern-with-js-promises)
 
 ## Retry wrapper with delay
 
