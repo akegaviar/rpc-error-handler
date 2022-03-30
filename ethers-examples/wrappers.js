@@ -3,7 +3,7 @@
  * @param {*} origin URL of the node
  * @returns resolved promise
  */
-const wrapRPCPromise = async (promise, origin) => {
+async function wrapRPCPromise(promise, origin) {
   try {
     const data = await promise
     return { result: data, origin }
@@ -19,7 +19,7 @@ const wrapRPCPromise = async (promise, origin) => {
  * @param {*} origin URL of the node
  * @returns resolved promise
  */
-const wrapRPCPromiseWithReject = async (promise, origin) => {
+async function wrapRPCPromiseWithReject(promise, origin) {
   try {
     const data = await promise
     return { result: data, origin }
@@ -90,6 +90,36 @@ async function retryRPCPromiseWithDelay(promise, retriesLeft, delay) {
     await wait(delay)
     // following retries after 1000ms
     return retryRPCPromiseWithDelay(promise, retriesLeft - 1, 1000)
+  }
+}
+
+async function initProvider(provider) {
+  // reset
+  isAlive = false
+  retries = 0
+
+  console.log('Initialising Ethers provider', retries)
+
+  while (!isAlive) {
+    if (retries > endpoints.length) {
+      console.log('All nodes are down!')
+      break
+    }
+    try {
+      console.log(`${retries} try, now with enpoint ${endpoints[retries]}`)
+      // for WSS
+      // ethersProvider = new ethers.providers.WebSocketProvider(endpoints[retries])
+
+      // For HTTP providers
+      ethersProvider = new ethers.providers.JsonRpcProvider(endpoints[retries])
+
+      // ethersProvider.ready() does not work 😕
+      isAlive = await ethersProvider.getBlockNumber()
+      console.log('isAlive :>> ', isAlive)
+    } catch (error) {
+      console.error('Error initialising provider')
+      retries++
+    }
   }
 }
 

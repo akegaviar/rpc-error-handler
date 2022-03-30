@@ -1,14 +1,14 @@
-## How to load balance RPC requests
+## How to handle RPC errors without a load balancer
 
 A very common scenario that our users asked us, is how to handle errors when sending RPC requests to their nodes.
 
-In Chainstack, we offer tailored load balancing in the enterprise plan but not all users and project can opt for that so we've decided to share some practises you can apply at the application level.
+In Chainstack, we offer tailored load balancing in the enterprise plan but not all users and projects can opt for that so we've decided to share some examples that you can apply at the application level.
 
 ## The problem
 
-When using a dedicated or shared nodes, it's possible that some requests might fail or timeout. Although this is a rare scenario, this can have a big impact in some applications like artitrage bots. In our enterprise plan, all requests go through a load balancer and are sent to to a live node. However, other plans do not have load balancing enabled so handling this scenarios must be done at application level.
+When RPC requests to a blockchain node, it's possible that some of them fail or timeout. Although this is a rare scenario, this can have a big impact in some applications like artitrage bots. In our enterprise plan, all requests go through a load balancer which makes sure that they hit a live node. However, other plans do not have load balancing enabled so handling this scenarios must be done at the application level.
 
-Note: to test this, I've created a code snippet that runs sequential RPC requests like getBlockNumber, getNetwork, getFeeData and getGasPrice.
+Note: to test this, I created a few code snippets that send sequential RPC requests and use all the solutions provided below. You can find the code in [the following GitHub repository](https://github.com/uF4No/rpc-error-handler).
 
 ## Duplicate requests and use promises
 
