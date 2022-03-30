@@ -1,3 +1,14 @@
+const { ethers } = require('ethers')
+
+//load env file
+require('dotenv').config()
+
+const DEDICATED_NODE_RPC = process.env.DEDICATED_NODE_RPC
+const BACKUP_NODE_RPC = process.env.BACKUP_NODE_RPC
+const BAD_RPC = 'https://bad-rpc-endpoint/12345'
+
+const allRPCs = [BAD_RPC, DEDICATED_NODE_RPC, BACKUP_NODE_RPC]
+
 /**
  * @param {*} promise An RPC request promise to be resolved
  * @param {*} origin URL of the node
@@ -92,34 +103,58 @@ async function retryRPCPromiseWithDelay(promise, retriesLeft, delay) {
     return retryRPCPromiseWithDelay(promise, retriesLeft - 1, 1000)
   }
 }
+/**
+ *
+ * @param {*} contractAddress blockchain address of the smart contract
+ * @param {*} abi smart contract JSON ABI
+ * @param {*} rpc RPC endpoint
+ * @returns a contract instance to execute methods
+ */
+function initContractRef(contractAddress, abi, rpc) {
+  // init provider
+  const provider = new ethers.providers.JsonRpcProvider(rpc)
+  // init contract
+  const contract = new ethers.Contract(contractAddress, abi, provider)
+  return contract
+}
 
-async function initProvider(provider) {
-  // reset
-  isAlive = false
-  retries = 0
+/**
+ *
+ * @param {*} contractAddress blockchain address of the smart contract
+ * @param {*} abi smart contract JSON ABI
+ * @param {*} methodName name of the smart contract method to run
+ * @param {*} params parameters required for the smart contract method
+ * @param {*} tryNumber default to 0. Each retry adds one, which uses a different RPC endpoint
+ * @returns
+ */
+async function wrapContratMethodWithRetries(
+  contractAddress,
+  abi,
+  methodName,
+  params,
+  tryNumber = 0
+) {
+  try {
+    let contract, data
 
-  console.log('Initialising Ethers provider', retries)
+    console.log(`Running contract method via ${allRPCs[tryNumber]}`)
+    contract = initContractRef(contractAddress, abi, allRPCs[tryNumber])
 
-  while (!isAlive) {
-    if (retries > endpoints.length) {
-      console.log('All nodes are down!')
-      break
+    data = await contract[methodName](...params)
+    console.log('data', data)
+    return data
+  } catch (error) {
+    if (tryNumber > allRPCs.length - 1) {
+      return Promise.reject(error)
     }
-    try {
-      console.log(`${retries} try, now with enpoint ${endpoints[retries]}`)
-      // for WSS
-      // ethersProvider = new ethers.providers.WebSocketProvider(endpoints[retries])
-
-      // For HTTP providers
-      ethersProvider = new ethers.providers.JsonRpcProvider(endpoints[retries])
-
-      // ethersProvider.ready() does not work 😕
-      isAlive = await ethersProvider.getBlockNumber()
-      console.log('isAlive :>> ', isAlive)
-    } catch (error) {
-      console.error('Error initialising provider')
-      retries++
-    }
+    console.error('Error in contract method, retrying with different RPC')
+    return wrapContratMethodWithRetries(
+      contractAddress,
+      abi,
+      methodName,
+      params,
+      tryNumber + 1
+    )
   }
 }
 
@@ -128,4 +163,5 @@ module.exports = {
   wrapRPCPromiseWithReject,
   retryRPCPromise,
   retryRPCPromiseWithDelay,
+  wrapContratMethodWithRetries,
 }
