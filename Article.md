@@ -177,7 +177,7 @@ console.log('getFeeData responses:', res2)
 
 The catch? `Promise.any` **was added in Node v15** so you have to make sure you're running one of the latest versions.
 
-[You can find the code sample here](https://github.com/uF4No/rpc-error-handler/blob/main/ethers-examples/promiseAny.js)
+[You can find the code sample here](https://github.com/uF4No/rpc-error-handler/blob/main/ethers-examples/promiseAny.js).
 
 ## Retrying with a function wrapper
 
@@ -213,7 +213,7 @@ async function retryRPCPromise(promise, retriesLeft) {
 }
 ```
 
-[You can check the code snippet that uses this wrapper function here](https://github.com/uF4No/rpc-error-handler/blob/main/ethers-examples/retryRequest.js)
+[You can check the code snippet that uses this wrapper function here](https://github.com/uF4No/rpc-error-handler/blob/main/ethers-examples/retryRequest.js).
 
 ## Retry wrapper with delay
 
@@ -317,7 +317,7 @@ main()
 
 With this approach we're wrapping each request in a try/catch and, if it fails, we're sending the same request again via the backup provider, which uses a different RPC endpoint.
 
-[You can find this code sample here](https://github.com/uF4No/rpc-error-handler/blob/main/ethers-examples/retryBackupProvider.js)
+[You can find this code sample here](https://github.com/uF4No/rpc-error-handler/blob/main/ethers-examples/retryBackupProvider.js).
 
 ## Retry with backup provider for smart contract methods
 
