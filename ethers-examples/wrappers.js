@@ -58,7 +58,7 @@ async function retryRPCPromise(promise, retriesLeft) {
       return Promise.reject(error)
     }
 
-    console.log(`${retriesLeft} retries left`)
+    console.log(`RPC request failed. ${retriesLeft} retries left`)
     // if there are retries left, reduce counter and
     // call same function recursively
     return retryRPCPromise(promise, retriesLeft - 1)
@@ -96,7 +96,7 @@ async function retryRPCPromiseWithDelay(promise, retriesLeft, delay) {
 
     // if there are retries left, reduce counter and
     // call same function recursively
-    console.log(`${retriesLeft} retries left`)
+    console.log(`RPC request failed. ${retriesLeft} retries left`)
     // wait for delay
     await wait(delay)
     // following retries after 1000ms

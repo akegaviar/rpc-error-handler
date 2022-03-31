@@ -16,7 +16,7 @@ const main = async () => {
     try {
       res1 = await mainProvider.getBlockNumber()
     } catch (error) {
-      console.error('Main provider failed')
+      console.error('Main provider failed, retrying with backup provider')
       res1 = await backupProvider.getBlockNumber()
     }
 
@@ -28,7 +28,7 @@ const main = async () => {
     try {
       res2 = await mainProvider.getGasPrice()
     } catch (error) {
-      console.error('Main provider failed')
+      console.error('Main provider failed, retrying with backup provider')
       res2 = await backupProvider.getGasPrice()
     }
     console.log('getGasPrice response: ', res2)
@@ -38,7 +38,7 @@ const main = async () => {
     try {
       res3 = await mainProvider.getNetwork()
     } catch (error) {
-      console.error('Main provider failed')
+      console.error('Main provider failed, retrying with backup provider')
       res3 = await backupProvider.getNetwork()
     }
     console.log('getNetwork response: ', res3)
