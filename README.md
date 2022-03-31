@@ -1,4 +1,4 @@
-# RPC error handler
+# RPC error handling examples
 
 This repo contains multiple examples to handle RPC errors when sending requests to blockchain nodes.
 
